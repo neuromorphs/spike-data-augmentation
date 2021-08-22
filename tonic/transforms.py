@@ -349,6 +349,17 @@ class SpatioTemporalTransform:
             self.roll,
         )
         return events, images, sensor_size
+    
+    
+class TimeAlignment:
+    """Shifts the timestamps to set the first event of all recordings of the dataset to zero.
+    """
+
+    def __call__(self, events, sensor_size, ordering, images=None, multi_image=None):
+        assert "t" in ordering
+        t_index = ordering.index("t")
+        events[:,t_index] -= min(events[:, t_index])
+        return events, images, sensor_size
 
 
 class TimeJitter:
