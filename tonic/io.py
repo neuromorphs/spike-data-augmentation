@@ -160,14 +160,18 @@ def read_davis_346(filename):
     all_addr = all_events["address"]
     t = all_events["timeStamp"]
 
-    # x, y, and p : bit-shift and bit-mask values taken from jAER (https://github.com/SensorsINI/jaer)
-    x = (346 - 1) - ((all_addr & 4190208) >> 12)
-    y = (260 - 1) - ((all_addr & 2143289344) >> 22)
-    p = ((all_addr & 2048) >> 11)
+    # Seperating DVS events from the shared set of DVS, APS, and IMU events. 
+    bit_31 = (all_addr >> 31) & 0b1
+    dvs = np.where(bit_31 == 0)
 
-    xytp = make_structured_array(x, y, t, p)
+    # x, y, and p : bit-shift and bit-mask values taken from jAER (https://github.com/SensorsINI/jaer)
+    dvs_x = (346 - 1) - (all_addr[dvs] >> 12) & 0x3FF
+    dvs_y = (260 - 1) - (all_addr[dvs] >> 22) & 0x1FF
+    dvs_p = ((all_addr[dvs] & 2048) >> 11)
+
+    dvs_xytp = make_structured_array(dvs_x, dvs_y, t[dvs], dvs_p, dtype=events_struct)
     shape = (346, 260)
-    return shape, start_timestamp, xytp
+    return shape, start_timestamp, dvs_xytp
 
 
 def read_dvs_346mini(filename):
