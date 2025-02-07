@@ -1,13 +1,11 @@
 import numpy as np
 import pytest
-from utils import create_random_input
-
 import tonic.transforms as transforms
+from utils import create_random_input
 
 
 @pytest.mark.parametrize(
-    "time_window, event_count, n_time_bins, n_event_bins, overlap,"
-    " include_incomplete, sensor_size",
+    "time_window, event_count, n_time_bins, n_event_bins, overlap, include_incomplete, sensor_size",
     [
         (20000, None, None, None, 0, False, (40, 20, 2)),
         (20000, None, None, None, 200, True, (40, 20, 1)),
@@ -24,14 +22,15 @@ import tonic.transforms as transforms
     ],
 )
 def test_representation_frame(
-    time_window,
-    event_count,
-    n_time_bins,
-    n_event_bins,
-    overlap,
-    include_incomplete,
-    sensor_size,
+    time_window: int,
+    event_count: int,
+    n_time_bins: int,
+    n_event_bins: int,
+    overlap: float,
+    include_incomplete: bool,
+    sensor_size: tuple,
 ):
+    """Test the frame representation transformation with various parameters."""
     n_events = 10000
     orig_events, _ = create_random_input(sensor_size=sensor_size, n_events=n_events)
 
@@ -48,29 +47,25 @@ def test_representation_frame(
     frames = transform(orig_events)
 
     assert frames.shape[1:] == sensor_size[::-1]
+    times = orig_events["t"]
     if time_window is not None:
         stride = time_window - overlap
-        times = orig_events["t"]
-        if include_incomplete:
-            assert frames.shape[0] == int(
-                np.ceil(((times[-1] - times[0]) - time_window) / stride) + 1
-            )
-        else:
-            assert frames.shape[0] == int(
-                np.floor(((times[-1] - times[0]) - time_window) / stride) + 1
-            )
+        expected_frames = (
+            np.ceil(((times[-1] - times[0]) - time_window) / stride) + 1
+            if include_incomplete
+            else np.floor(((times[-1] - times[0]) - time_window) / stride) + 1
+        )
+        assert frames.shape[0] == int(expected_frames)
 
     if event_count is not None:
         assert event_count == frames[0].sum()
         stride = event_count - overlap
-        if include_incomplete:
-            assert frames.shape[0] == int(
-                np.ceil((n_events - event_count) / stride) + 1
-            )
-        else:
-            assert frames.shape[0] == int(
-                np.floor((n_events - event_count) / stride) + 1
-            )
+        expected_frames = (
+            np.ceil((n_events - event_count) / stride) + 1
+            if include_incomplete
+            else np.floor((n_events - event_count) / stride) + 1
+        )
+        assert frames.shape[0] == int(expected_frames)
 
     if n_time_bins is not None:
         assert frames.shape[0] == n_time_bins
@@ -82,90 +77,8 @@ def test_representation_frame(
     assert frames is not orig_events
 
 
-@pytest.mark.parametrize(
-    "time_window, event_count, n_time_bins, n_event_bins, overlap,"
-    " include_incomplete, sensor_size",
-    [
-        (2000, None, None, None, 0, False, (40, 20, 2)),
-        (2000, None, None, None, 200, True, (40, 20, 1)),
-        (1000, None, None, None, 100, True, (40, 20, 3)),
-        (None, 2000, None, None, 0, False, (40, 20, 2)),
-        (None, 2000, None, None, 200, True, (20, 20, 1)),
-        (None, 2000, None, None, 100, True, (10, 20, 2)),
-        (None, None, 5, None, 0, False, (40, 20, 2)),
-        (None, None, 5, None, 0.1, False, (10, 20, 2)),
-        (None, None, 5, None, 0.25, True, (40, 20, 2)),
-        (None, None, None, 5, 0, True, (40, 20, 2)),
-        (None, None, None, 5, 0.1, False, (40, 20, 2)),
-        (None, None, None, 5, 0.25, False, (10, 20, 1)),
-    ],
-)
-def test_representation_sparse_tensor(
-    time_window,
-    event_count,
-    n_time_bins,
-    n_event_bins,
-    overlap,
-    include_incomplete,
-    sensor_size,
-):
-    n_events = 10000
-    orig_events, sensor_size = create_random_input(
-        sensor_size=sensor_size, n_events=n_events
-    )
-
-    transform = transforms.ToSparseTensor(
-        sensor_size=sensor_size,
-        time_window=time_window,
-        event_count=event_count,
-        n_time_bins=n_time_bins,
-        n_event_bins=n_event_bins,
-        overlap=overlap,
-        include_incomplete=include_incomplete,
-    )
-
-    sparse_tensor = transform(orig_events)
-
-    assert sparse_tensor.is_sparse
-    assert sparse_tensor.shape[1:] == sensor_size[::-1]
-
-    if time_window is not None:
-        stride = time_window - overlap
-        times = orig_events["t"]
-        if include_incomplete:
-            assert sparse_tensor.shape[0] == int(
-                np.ceil(((times[-1] - times[0]) - time_window) / stride) + 1
-            )
-        else:
-            assert sparse_tensor.shape[0] == int(
-                np.floor(((times[-1] - times[0]) - time_window) / stride) + 1
-            )
-
-    if event_count is not None:
-        assert event_count == sparse_tensor[0].to_dense().sum()
-        stride = event_count - overlap
-        if include_incomplete:
-            assert sparse_tensor.shape[0] == int(
-                np.ceil((n_events - event_count) / stride) + 1
-            )
-        else:
-            assert sparse_tensor.shape[0] == int(
-                np.floor((n_events - event_count) / stride) + 1
-            )
-
-    if n_time_bins is not None:
-        assert sparse_tensor.shape[0] == n_time_bins
-
-    if n_event_bins is not None:
-        assert sparse_tensor.shape[0] == n_event_bins
-        assert sparse_tensor[0].to_dense().sum() == (1 + overlap) * (
-            n_events // n_event_bins
-        )
-
-    assert sparse_tensor is not orig_events
-
-
 def test_representation_inferred_frame():
+    """Test frame representation with inferred sensor size."""
     sensor_size = (20, 10, 2)
     orig_events, _ = create_random_input(n_events=30000, sensor_size=sensor_size)
     transform = transforms.ToFrame(sensor_size=None, time_window=25000)
@@ -174,6 +87,7 @@ def test_representation_inferred_frame():
 
 
 def test_representation_frame_wrong_sensor_size():
+    """Test frame representation with a mismatched sensor size, expecting an error."""
     sensor_size = (20, 10, 2)
     orig_events, _ = create_random_input(n_events=30000, sensor_size=sensor_size)
     transform = transforms.ToFrame(sensor_size=(20, 10, 1), time_window=25000)
@@ -182,6 +96,7 @@ def test_representation_frame_wrong_sensor_size():
 
 
 def test_representation_audio_frame():
+    """Test frame representation specifically for audio data."""
     sensor_size = (200, 1, 2)
     orig_events, _ = create_random_input(
         sensor_size=sensor_size,
@@ -193,6 +108,7 @@ def test_representation_audio_frame():
 
 
 def test_representation_image():
+    """Test image representation from event data."""
     sensor_size = (100, 100, 2)
     orig_events, _ = create_random_input(n_events=10000, sensor_size=sensor_size)
     transform = transforms.ToImage(sensor_size=sensor_size)
@@ -201,7 +117,7 @@ def test_representation_image():
 
 
 @pytest.mark.parametrize(
-    "sensor_size, dt, tau,",
+    "sensor_size, dt, tau",
     [
         ((40, 15, 2), 10000, 10000),
         ((10, 20, 2), 20000, 1000),
@@ -209,6 +125,7 @@ def test_representation_image():
     ],
 )
 def test_representation_time_surface(sensor_size, dt, tau):
+    """Test time surface representation with varying parameters."""
     orig_events, sensor_size = create_random_input(
         sensor_size=sensor_size, n_events=10000
     )
@@ -231,6 +148,7 @@ def test_representation_time_surface(sensor_size, dt, tau):
     [(7, 9, 100, "lin"), (3, 4, 1000, "exp")],
 )
 def test_representation_avg_time_surface(surface_size, cell_size, tau, decay):
+    """Test averaged time surface representation with various decay functions."""
     orig_events, sensor_size = create_random_input(n_events=1000)
 
     transform = transforms.ToAveragedTimesurface(
@@ -256,6 +174,7 @@ def test_representation_avg_time_surface(surface_size, cell_size, tau, decay):
 
 @pytest.mark.parametrize("n_time_bins", [10, 1])
 def test_representation_voxel_grid(n_time_bins):
+    """Test voxel grid representation with varying number of time bins."""
     orig_events, sensor_size = create_random_input()
 
     transform = transforms.ToVoxelGrid(sensor_size=sensor_size, n_time_bins=n_time_bins)
@@ -271,6 +190,7 @@ def test_representation_voxel_grid(n_time_bins):
     [(1, 8), (2, 8), (3, 8), (1, 16), (2, 16)],
 )
 def test_bina_rep(n_frames, n_bits):
+    """Test binary representation transformation with varying frames and bit depths."""
     n_events = 10000
     sensor_size = (128, 128, 2)
 

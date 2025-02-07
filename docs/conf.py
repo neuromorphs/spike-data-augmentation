@@ -1,11 +1,12 @@
 import tonic
 
+# Project information
 project = "Tonic"
 copyright = "2019-present, the neuromorphs of Telluride"
 author = "Gregor Lenz"
-
 master_doc = "index"
 
+# Sphinx extensions
 extensions = [
     "autoapi.extension",
     "myst_nb",
@@ -17,9 +18,10 @@ extensions = [
     "sphinx_gallery.gen_gallery",
 ]
 
+# Sphinx-gallery configuration
 sphinx_gallery_conf = {
-    "examples_dirs": "gallery/",  # path to your example scripts
-    "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
+    "examples_dirs": "gallery/",
+    "gallery_dirs": "auto_examples",
     "backreferences_dir": None,
     "matplotlib_animations": True,
     "doc_module": ("tonic",),
@@ -27,6 +29,7 @@ sphinx_gallery_conf = {
     "ignore_pattern": r"utils\.py",
 }
 
+# AutoAPI configuration
 autodoc_typehints = "both"
 autoapi_type = "python"
 autoapi_dirs = ["../tonic"]
@@ -39,23 +42,21 @@ autoapi_options = [
     "imported-members",
 ]
 
-# Napoleon settings
+# Napoleon settings for docstrings
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 
-# MyST settings
-# nb_execution_mode = "off"
+# MyST-NB settings
 nb_execution_timeout = 300
 nb_execution_show_tb = True
 nb_execution_excludepatterns = ["large_datasets.ipynb"]
 suppress_warnings = ["myst.header"]
 
-# Add any paths that contain templates here, relative to this directory.
+# Paths for templates and static files
 templates_path = ["_templates"]
+html_static_path = ["_static"]
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
+# Patterns to exclude from processing
 exclude_patterns = [
     "auto_examples/**.ipynb",
     "auto_examples/**.py",
@@ -67,7 +68,7 @@ exclude_patterns = [
     "README.rst",
 ]
 
-# -- Options for HTML output -------------------------------------------------
+# HTML output options
 html_theme = "sphinx_book_theme"
 html_title = tonic.__version__
 html_logo = "_static/tonic-logo-black-bg.png"
@@ -75,6 +76,7 @@ html_favicon = "_static/tonic_favicon.png"
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
 
+# HTML theme options
 html_theme_options = {
     "repository_url": "https://github.com/neuromorphs/tonic",
     "use_repository_button": True,
@@ -84,8 +86,3 @@ html_theme_options = {
     "path_to_docs": "docs",
     "use_fullscreen_button": True,
 }
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]

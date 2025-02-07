@@ -150,7 +150,7 @@ class DSEC(Dataset):
 
         import imageio
 
-        imageio.plugins.freeimage.download()
+        # imageio.plugins.freeimage.download()
 
         if split == "train":
             self.recording_selection = self.recordings[split].keys()
