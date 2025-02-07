@@ -77,6 +77,89 @@ def test_representation_frame(
     assert frames is not orig_events
 
 
+@pytest.mark.parametrize(
+    "time_window, event_count, n_time_bins, n_event_bins, overlap,"
+    " include_incomplete, sensor_size",
+    [
+        (2000, None, None, None, 0, False, (40, 20, 2)),
+        (2000, None, None, None, 200, True, (40, 20, 1)),
+        (1000, None, None, None, 100, True, (40, 20, 3)),
+        (None, 2000, None, None, 0, False, (40, 20, 2)),
+        (None, 2000, None, None, 200, True, (20, 20, 1)),
+        (None, 2000, None, None, 100, True, (10, 20, 2)),
+        (None, None, 5, None, 0, False, (40, 20, 2)),
+        (None, None, 5, None, 0.1, False, (10, 20, 2)),
+        (None, None, 5, None, 0.25, True, (40, 20, 2)),
+        (None, None, None, 5, 0, True, (40, 20, 2)),
+        (None, None, None, 5, 0.1, False, (40, 20, 2)),
+        (None, None, None, 5, 0.25, False, (10, 20, 1)),
+    ],
+)
+def test_representation_sparse_tensor(
+    time_window,
+    event_count,
+    n_time_bins,
+    n_event_bins,
+    overlap,
+    include_incomplete,
+    sensor_size,
+):
+    n_events = 10000
+    orig_events, sensor_size = create_random_input(
+        sensor_size=sensor_size, n_events=n_events
+    )
+
+    transform = transforms.ToSparseTensor(
+        sensor_size=sensor_size,
+        time_window=time_window,
+        event_count=event_count,
+        n_time_bins=n_time_bins,
+        n_event_bins=n_event_bins,
+        overlap=overlap,
+        include_incomplete=include_incomplete,
+    )
+
+    sparse_tensor = transform(orig_events)
+
+    assert sparse_tensor.is_sparse
+    assert sparse_tensor.shape[1:] == sensor_size[::-1]
+
+    if time_window is not None:
+        stride = time_window - overlap
+        times = orig_events["t"]
+        if include_incomplete:
+            assert sparse_tensor.shape[0] == int(
+                np.ceil(((times[-1] - times[0]) - time_window) / stride) + 1
+            )
+        else:
+            assert sparse_tensor.shape[0] == int(
+                np.floor(((times[-1] - times[0]) - time_window) / stride) + 1
+            )
+
+    if event_count is not None:
+        assert event_count == sparse_tensor[0].to_dense().sum()
+        stride = event_count - overlap
+        if include_incomplete:
+            assert sparse_tensor.shape[0] == int(
+                np.ceil((n_events - event_count) / stride) + 1
+            )
+        else:
+            assert sparse_tensor.shape[0] == int(
+                np.floor((n_events - event_count) / stride) + 1
+            )
+
+    if n_time_bins is not None:
+        assert sparse_tensor.shape[0] == n_time_bins
+
+    if n_event_bins is not None:
+        assert sparse_tensor.shape[0] == n_event_bins
+        assert sparse_tensor[0].to_dense().sum() == (1 + overlap) * (
+            n_events // n_event_bins
+        )
+
+    assert sparse_tensor is not orig_events
+
+
 def test_representation_inferred_frame():
     """Test frame representation with inferred sensor size."""
     sensor_size = (20, 10, 2)
